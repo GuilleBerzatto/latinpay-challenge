@@ -33,7 +33,7 @@ class PaymentIntegrationTest extends TestCase
     /** @test */
     public function it_enforces_idempotency_in_bank_notifications_module_b()
     {
-        // 1. Crear el pago previo
+        // Crear el pago previo
         $payment = Payment::factory()->create(['payment_code' => 'LTP-123', 'status' => 'PENDING']);
 
         $payload = [
@@ -46,27 +46,27 @@ class PaymentIntegrationTest extends TestCase
             'paid_at' => now()->toDateTimeString()
         ];
 
-        // 2. Primera notificación: Debe ser exitosa
+        // Primera notificación
         $this->postJson('/api/v1/bank/notifications', $payload)->assertStatus(200);
 
-        // 3. Segunda notificación con mismo event_id: Debe fallar o indicar duplicado
+        // Segunda notificación con mismo event_id: Debe fallar o indicar duplicado
         $response = $this->postJson('/api/v1/bank/notifications', $payload);
         
-        $response->assertStatus(422) // O 200 según tu lógica de "already registered"
+        $response->assertStatus(422) //
                  ->assertJsonFragment(['message' => 'event already registered']);
     }
 
     /** @test */
     public function it_filters_settlement_candidates_by_cutoff_time_module_f()
     {
-        // Pago ANTES del corte (20:30) - Debe aparecer
+        // Pago ANTES del corte
         Payment::factory()->create([
             'status' => 'PAID',
             'paid_at' => '2026-05-05 20:30:00',
             'settled_at' => null
         ]);
 
-        // Pago DESPUÉS del corte (21:00) - No debe aparecer
+        // Pago DESPUÉS del corte (21:00)
         Payment::factory()->create([
             'status' => 'PAID',
             'paid_at' => '2026-05-05 21:00:00',

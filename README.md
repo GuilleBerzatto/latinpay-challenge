@@ -1,58 +1,73 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Payment Bridge Challenge - Guillermo Alosilla
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Este proyecto es una solución técnica para un **Bridge de Pagos** desarrollado en Laravel 11, diseñado para gestionar transacciones entre comercios y entidades bancarias de forma asíncrona, resiliente e íntegra.
 
-## About Laravel
+## Tecnologías Utilizadas
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+*   **Framework:** Laravel 11
+*   **Lenguaje:** PHP 8.2+
+*   **Base de Datos:** PostgreSQL (para asegurar integridad referencial y manejo de zonas horarias)
+*   **Contenerización:** Laravel Sail (Docker)
+*   **Colas (Queues):** Database driver (para procesamiento asíncrono de notificaciones)
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+---
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Instalación y Ejecución
 
-## Learning Laravel
+Sigue estos pasos para desplegar el entorno local:
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+1. **Clonar el repositorio:**
+   ```bash
+   git clone <URL_DE_TU_REPOSITORIO>
+   cd payment-bridge-challenge
 
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+2. **Configuración del entorno:**
+    cp .env.example .env
 
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
+3. **Instalación de dependencias y levantar contenedores**
+    docker run --rm \
+        -u "$(id -u):$(id -g)" \
+        -v "$(pwd):/var/www/html" \
+        -w /var/www/html \
+        laravelsail/php82-composer:latest \
+        composer install
 
-## Agentic Development
+    ./vendor/bin/sail up -d
 
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+4. **Ejecutar migraciones y seeders**
+    ./vendor/bin/sail artisan migrate --seed
 
-```bash
-composer require laravel/boost --dev
+5. **Ejecutar el Queue Worker**
+    ./vendor/bin/sail artisan queue:work
 
-php artisan boost:install
-```
+---
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+## Arquitectura y Decisiones Técnicas
+1. **Base de Datos e Índices**
+    Se optó por PostgreSQL debido a su manejo avanzado de tipos de datos y zonas horarias, crítico para el Módulo F (Liquidación).
 
-## Contributing
+    Se aplicaron índices únicos en payment_code y event_id para garantizar la integridad.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+    Se utiliza una columna settled_at para controlar el estado de liquidación y evitar dobles pagos.
 
-## Code of Conduct
+2. **Idempotencia (Módulo B y D)**
+    Para prevenir el procesamiento duplicado de transacciones (muy común en reintentos de APIs bancarias), el sistema valida la existencia previa de event_id antes de actualizar cualquier estado de pago.
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+3. **Resiliencia en Notificaciones (Módulo E)**
+    La integración con comercios externos se maneja mediante Laravel Jobs. Si el webhook del comercio falla, el Job implementa una política de reintentos asíncronos con un backoff de 60 segundos, evitando bloquear el flujo principal.
 
-## Security Vulnerabilities
+4. **Lógica de Cut-off (Módulo F)**
+    La consulta de candidatos a liquidación filtra operaciones PAID considerando la hora de corte 20:45 (America/Lima). Se utiliza lógica SQL nativa para asegurar que la conversión de zona horaria sea precisa desde el motor de base de datos.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+---
 
-## License
+## Documentación de endpoints
+Se incluye una colección de Postman en la carpeta /docs del repositorio para facilitar las pruebas de cada módulo:
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+    POST /api/v1/payments: Registro de intención de pago (Módulo A).
+
+    POST /api/v1/bank/notifications: Notificación en tiempo real del banco (Módulo B).
+
+    POST /api/v1/bank/reconciliation: Carga de movimientos para conciliación (Módulo D).
+
+    GET /api/v1/settlements/candidates: Consulta de pagos listos para liquidación (Módulo F).

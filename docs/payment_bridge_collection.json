@@ -1,0 +1,44 @@
+{
+	"info": {
+		"name": "Payment Bridge Challenge",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Módulo A: Crear Pago",
+			"request": {
+				"method": "POST",
+				"header": [
+					{"key": "Content-Type", "value": "application/json"},
+					{"key": "Accept", "value": "application/json"}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"merchant_id\": 10,\n  \"customer_document\": \"76359665\",\n  \"amount\": 150.50,\n  \"currency\": \"PEN\",\n  \"description\": \"Pago de servicio mensual\"\n}"
+				},
+				"url": { "raw": "http://localhost/api/v1/payments" }
+			}
+		},
+		{
+			"name": "Módulo B: Notificación del Banco",
+			"request": {
+				"method": "POST",
+				"header": [
+					{"key": "Content-Type", "value": "application/json"}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\n  \"event_id\": \"evt_001\",\n  \"bank_transaction_id\": \"bank_tx_999\",\n  \"payment_code\": \"LTP-20260501-000005\",\n  \"amount\": 150.50,\n  \"currency\": \"PEN\",\n  \"status\": \"PAID\",\n  \"paid_at\": \"2026-05-05 20:30:00\"\n}"
+				},
+				"url": { "raw": "http://localhost/api/v1/bank/notifications" }
+			}
+		},
+		{
+			"name": "Módulo F: Candidatos a Liquidación",
+			"request": {
+				"method": "GET",
+				"url": { "raw": "http://localhost/api/v1/settlements/candidates" }
+			}
+		}
+	]
+}
