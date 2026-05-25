@@ -18,7 +18,7 @@ Sigue estos pasos para desplegar el entorno local:
 
 1. **Clonar el repositorio:**
    ```bash
-   git clone <URL_DE_TU_REPOSITORIO>
+   git clone <https://github.com/GuilleBerzatto/latinpay-challenge.git>
    cd payment-bridge-challenge
 
 2. **Configuración del entorno:**
